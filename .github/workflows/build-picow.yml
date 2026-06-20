@@ -1,0 +1,43 @@
+name: Build OGX-Mini Original PicoW
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential python3 python3-pip
+          pip3 install --break-system-packages pycryptodome
+
+      - name: Clone Pico SDK
+        run: |
+          git clone -b 2.1.1 https://github.com/raspberrypi/pico-sdk.git $HOME/pico-sdk
+          cd $HOME/pico-sdk
+          git submodule update --init
+
+      - name: Configure
+        env:
+          PICO_SDK_PATH: /home/runner/pico-sdk
+        run: |
+          cd Firmware/RP2040
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DOGXM_BOARD=PI_PICOW -DMAX_GAMEPADS=1 -DPICO_SDK_PATH=$PICO_SDK_PATH
+
+      - name: Build
+        run: |
+          cd Firmware/RP2040
+          cmake --build build
+
+      - name: Upload UF2
+        uses: actions/upload-artifact@v4
+        with:
+          name: ogxmini-original-picow-1gamepad
+          path: Firmware/RP2040/build/**/*.uf2
